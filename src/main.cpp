@@ -1,60 +1,79 @@
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
+#include <fstream>
+#include <nlohmann/json.hpp>
 
-#include "Bridges.h"
-#include "DataSource.h"
-#include "data_src/Game.h"
-
+using json = nlohmann::json;
 using namespace std;
-using namespace bridges;
 
-// Define the gameInfo struct
+// Define the struct to store game information
 struct gameInfo {
     string title;
-    string platformType;
+    string platform;
     double rating;
-    vector<string> genres;
+    vector<string> genre;
 };
 
-int main(int argc, char **argv) {
-    // Create Bridges object
-    Bridges bridges(YOUR_ASSSIGNMENT_NUMBER, "YOUR_USER_ID", "YOUR_API_KEY");
-    bridges.setTitle("How to access the IGN Game Data");
+int main() {
+    int count = 0;
+    // Open the JSON file
+    std::ifstream file("game.json");
+    if (!file.is_open()) {
+        std::cerr << "Error opening file.\n";
+        return 1;
+    }
 
-    // Read the IGN game data
-    DataSource ds(&bridges);
-    vector<Game> game_list = ds.getGameData();
+    // Parse the JSON data
+    json jsonData;
+    file >> jsonData;
+
+    // Close the file
+    file.close();
 
     // Create a map to store game reviews
-    map<string, gameInfo> gameReviews;
+    map<std::string, gameInfo> gameReviews;
 
-    // Iterate through the game list
-    for (const auto& game : game_list) {
-        // Extract game information
-        string title = game.getTitle();
-        string platformType = game.getPlatformType();
-        double rating = game.getRating();
-        vector<string> genres = game.getGameGenre();
-
-        // Create gameInfo struct
-        gameInfo info = {title, platformType, rating, genres};
-
-        // Store in the map with the game name as key
-        gameReviews[title] = info;
+    // Extract data from JSON and store it in the map
+    for (const auto& entry : jsonData["data"]) {
+        gameInfo info;
+        info.title = entry["game"];
+        info.platform = entry["platform"];
+        info.rating = entry["rating"];
+        info.genre = entry["genre"].get<vector<string>>();
+        gameReviews[info.title] = info;
     }
 
-    // Print a single record of the data for illustration
-    cout << "Game 0:" << endl;
-    cout << "\tTitle: " << gameReviews.begin()->first << endl;
-    cout << "\tPlatform Type: " << gameReviews.begin()->second.platformType << endl;
-    cout << "\tRating: " << gameReviews.begin()->second.rating << endl;
-    cout << "\tGenres: ";
-    for (const auto& genre : gameReviews.begin()->second.genres) {
-        cout << genre << ", ";
+    // Example: Accessing game review by name
+    string gameName = "Wolfenstein: The New Order";
+    if (gameReviews.find(gameName) != gameReviews.end()) {
+        gameInfo& info = gameReviews[gameName];
+        cout << "Title: " << info.title << "\n";
+        cout << "Platform: " << info.platform << "\n";
+        cout << "Rating: " << info.rating << "\n";
+        cout << "Genre(s): ";
+        for (const auto& genre : info.genre) {
+            cout << genre << ", ";
+        }
+        cout << "\n";
     }
-    cout << endl;
-
+    else {
+        cout << "Game review not found.\n";
+    }
+    cout << "Now Iterating through all:" << endl;
+    for (const auto& game : gameReviews) {
+        count++;
+        cout << "Title: " << game.second.title << "\n";
+        cout << "Platform: " << game.second.platform << "\n";
+        cout << "Rating: " << game.second.rating << "\n";
+        cout << "Genre(s): ";
+        for (const auto& genre : game.second.genre) {
+            cout << genre << ", ";
+        }
+        cout << endl;
+        cout << endl;
+    }
+    cout << count;
     return 0;
 }
