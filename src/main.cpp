@@ -3,7 +3,6 @@
 #include <map>
 #include <fstream>
 #include <nlohmann/json.hpp> //only works if you have the libray installed
-// For some reason, I can only install the library if I use a project outside my cloned repo
 
 using json = nlohmann::json;
 using namespace std;
@@ -14,7 +13,7 @@ int main() {
     // Open the JSON file
     std::ifstream file("game.json");
     if (!file.is_open()) {
-        std::cerr << "Error opening file.\n";
+        cout << "Error opening IGN Reviews JSON file." << endl;
         return 1;
     }
 
@@ -25,23 +24,41 @@ int main() {
     // Close the file
     file.close();
 
+    //Open csv file
+    ifstream file2("dataset.csv");
+    if (!file2.is_open()) {
+        cout << "Error opening Steam Reviews dataset CSV file." << endl;
+        return 1;
+    }
+
+
     // Create map to store IGN reviews
-    map<std::string, GameStruct> IGNMap;
+    map<string, GameStruct> IGNMap;
+    // Create a map to store Other Steam Reviews
+    map<string, GameStruct> SteamMap;
 
     // Create hashTable store IGN Reviews
     HashTable IGNHashTable;
+    // Create a hashTable to store Other Steam Reviews
+    HashTable SteamHashTable;
 
-    // Extract data from JSON and store it in the map & hash table
+    // Extract data from IGN JSON and store it in the map & hash table
     for (const auto& entry : jsonData["data"]) {
         GameStruct info;
         info.title = entry["game"];
         info.platform = entry["platform"];
         info.rating = entry["rating"];
         info.genre = entry["genre"].get<vector<string>>();
+        info.hasOthers = false; // For now, it doesn't have other reviews
         //Add it to the map
         IGNMap[info.title] = info;
         //Add it to the hash table
         IGNHashTable.insertReview(entry["game"], info);
+    }
+
+    // Extract data from Steam csv file and store it in the map & hash table
+    for (const auto& entry : idk) {
+
     }
 
     // Testing accessing game review by name
