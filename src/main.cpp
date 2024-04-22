@@ -22,7 +22,7 @@ vector<GameStruct> recommendGames(const string& userFavorite, const map<string, 
     vector<pair<double, GameStruct>> scoredGames;
 
     if (games.find(userFavorite) != games.end()) {
-        GameStruct favorite = games.at(userFavorite);
+        const GameStruct& favorite = games.at(userFavorite);
 
         for (const auto& pair : games) {
             const GameStruct& game = pair.second;
@@ -68,7 +68,27 @@ vector<GameStruct> recommendGames(const string& userFavorite, const map<string, 
     return {};  // Return empty if favorite not found
 }
 
+void displayReviews(const string& gameTitle, const map<string, GameStruct>& games) {
+    string displayMore = "y";
+    GameStruct currentGame = games.at(gameTitle);
+
+    int currentReview = 0;
+
+    while (displayMore != "n") {
+        cout << "\nUser Reviews:\n";
+        for (int i = 1; i <= 3; ++i) {
+            cout << "Review " << i << ". " << currentGame.reviews[currentReview] << endl;
+            ++currentReview;
+        }
+        cout << "Display 3 more reviews? (y/n) ";
+        getline(cin, displayMore);
+    }
+    cout << "\n";
+}
+
 int main() {
+    cout << "Loading main menu...\n" << endl;
+
     map<string, GameStruct> games;
     HashTable gamesHashTable;
 
@@ -157,38 +177,96 @@ int main() {
     }
     tsvFile.close();
 
-    // Example of accessing a specific game review by name
-    string gameTitle = "Counter-Strike";
+    int userSelection = 0;
 
-    if (games.find(gameTitle) != games.end()) {
-        const GameStruct& game = games[gameTitle];
-        cout << "Title: " << game.title << "\nPlatform: " << game.platform << "\nIGN Rating: " << game.ignRating << "\nGenres: ";
-        for (const string& genre : game.genres) {
-            cout << genre << " ";
+    while (true) {
+        // MAIN MENU
+        cout << "Main Menu (enter a selection 1-4)\n"
+                "1. Print all games (title, platform, rating, genre)\n"
+                "2. Find a specific game in the database\n"
+                "3. Get game recommendations based on a specific game\n"
+                "4. Exit" << endl;
+        cin >> userSelection;
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        if (userSelection == 1) {
+            for (const auto& entry : games) {
+                cout << "Title: " << entry.second.title << "\nPlatform: " << entry.second.platform << "\nIGN Rating: "
+                     << entry.second.ignRating << "\nGenres: ";
+                for (size_t i = 0; i < entry.second.genres.size(); ++i) {
+                    cout << entry.second.genres[i];
+                    if (i != entry.second.genres.size() - 1) cout << ", "; // Add comma only if it's not the last item
+                }
+                cout << "\n\n"; // Finish with a newline for separation
+            }
         }
-        cout << "\n3 User Reviews:\n";
-        for (int i = 0; i < 3; ++i) {
-            cout << "Review: " << game.reviews[i] << endl;
+
+        if (userSelection == 2) {
+            string lookupTitle;
+            cout << "Enter the game title: ";
+            getline(cin, lookupTitle);
+
+            if (games.find(lookupTitle) != games.end()) {
+                const GameStruct &game = games[lookupTitle];
+                cout << "Title: " << game.title << "\nPlatform: " << game.platform << "\nIGN Rating: " << game.ignRating
+                     << "\nGenres: ";
+                for (const string &genre: game.genres) {
+                    cout << genre << " ";
+                }
+                string viewReviews;
+                cout << "Would you like to view user reviews for this game? (type in y/n): ";
+                getline(cin, viewReviews);
+                displayReviews(lookupTitle, games);
+            }
+            else {
+                cout << "Game not found." << endl;
+            }
         }
-    } else {
-        cout << "Game not found." << endl;
+
+        if (userSelection == 3) {
+            // Prompt user to input favorite game title
+            string userFavorite;
+            cout << "Enter your favorite game: ";
+            getline(cin, userFavorite);
+
+            // Recommend games based ons similarity score
+            vector<GameStruct> recommendations = recommendGames(userFavorite, games);
+            cout << "Based on your interest in " << userFavorite << ", we recommend:\n";
+            int recNumber = 1;
+            for (const auto &rec: recommendations) {
+                cout << recNumber << ". " << rec.title << " on " << rec.platform << " rated " << rec.ignRating;
+                cout << ", Genres: ";
+                for (const auto &genre: rec.genres) {
+                    cout << genre << " ";
+                }
+                cout << "\n";
+                ++recNumber;
+            }
+            string viewReviews = "n";
+            cout << "Would you like to view user reviews for one of these games? (type the index 1-5, or \"n\" to exit): ";
+            getline(cin, viewReviews);
+            if (viewReviews == "n") {
+                continue;
+            }
+            else {
+                try {
+                    int lookUpReviewIndex = stoi(viewReviews) - 1;
+                    if (lookUpReviewIndex >= 0 && lookUpReviewIndex < recommendations.size()) {
+                        displayReviews(recommendations[lookUpReviewIndex].title, games);
+                    } else {
+                        cout << "Invalid game index.\n";
+                    }
+                } catch (const invalid_argument& ia) {
+                    cout << "Invalid input. Please enter a number or 'n' to skip.\n";
+                } catch (const out_of_range& oor) {
+                    cout << "Input out of range. Please try again.\n";
+                }
+            }
+
+        }
+
+        if (userSelection == 4) break;
     }
-
-    // Prompt user to input favorite game title
-    string userFavorite;
-    cout << "Enter your favorite game: ";
-    getline(cin, userFavorite);
-
-    // Recommend games based ons similarity score
-    vector<GameStruct> recommendations = recommendGames(userFavorite, games);
-    cout << "Based on your interest in " << userFavorite << ", we recommend:\n";
-    for (const auto& rec : recommendations) {
-        cout << rec.title << " on " << rec.platform << " rated " << rec.ignRating;
-        cout << ", Genres: ";
-        for (const auto& genre : rec.genres) {
-            cout << genre << " ";
-        }
-        cout << "\n";
-    }
+    cout << "\nThank you for using the Game Recommender!" << endl;
     return 0;
 }
