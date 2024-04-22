@@ -12,7 +12,7 @@ struct Review {
 };
 
 int main() {
-    ifstream file("dataset.csv");
+    ifstream file("dataset.tsv");
 
     if (!file.is_open()) {
         cerr << "Failed to open the file." << std::endl;
