@@ -8,8 +8,7 @@
 using json = nlohmann::json;
 using namespace std;
 
-// Might take out later::
-/*
+// Helper Functions
 double calculateGenreSimilarity(const vector<string>& userGenres, const vector<string>& gameGenres) {
     double score = 0.0;
     for (const auto& genre : userGenres) {
@@ -67,9 +66,7 @@ vector<GameStruct> recommendGames(const string& userFavorite, const map<string, 
     }
 
     return {};  // Return empty if favorite not found
-}*/
-// ^^Might take out later
-// Helper Functions
+}
 void displayReviews(const string& gameTitle, const map<string, GameStruct>& games) {
     string displayMore = "y";
     GameStruct currentGame = games.at(gameTitle);
@@ -93,7 +90,7 @@ int main() {
     // Create map to store IGN reviews
     map<string, GameStruct> IGNMap;
     // Create a map to store Other Steam Reviews
-    map<string, ReviewStruct> SteamMap;
+    map<string, vector<ReviewStruct>> SteamMap;
 
     // Create hashTable store IGN Reviews
     HashTableIGN IGNHashTable;
@@ -174,10 +171,10 @@ int main() {
                 tempRev.reviewText = reviewText;
                 tempRev.UserID = 0; // should be changed in the insertReview func
                 //update the steam reviews hash table
-                SteamHashTable.insertReview(tempRev);
+                SteamHashTable.insertReview(title, tempRev);
                 //IGNHashTable.hasSteam(title); // update the bool might not be needed
                 // update the steam reviews map
-                SteamMap[title] = tempRev;
+                SteamMap[title].push_back(tempRev);
             }
             else {
                 // Game Doesn't Exist Create a new game entry if not found in JSON
