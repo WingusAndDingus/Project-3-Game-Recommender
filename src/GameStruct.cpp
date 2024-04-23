@@ -3,12 +3,19 @@
 
 using namespace std;
 
+//struct to store IGN review game information
 struct GameStruct {
     string title;
-    string platform;       // Comes from JSON
-    double ignRating;      // Rating out of 10, from JSON
-    vector<string> genres; // Comes from JSON
-    vector<string> reviews; // User reviews texts from TSV
-    vector<double> userRatings; // Ratings from users (1.0 or -1.0) from TSV
-    bool hasOthers;        // Additional flag from TSV
+    string platform;
+    double rating;
+    vector<string> genre;
+    bool hasSteam;
+};
+
+//struct to store Steam User Reviews info
+struct ReviewStruct {
+    string reviewText;
+    string gameTitle;
+    int recommends; // -1 = not recommended, 1 = recommended
+    int UserID; //Randomly generated ID to act as key in map/hashtable
 };

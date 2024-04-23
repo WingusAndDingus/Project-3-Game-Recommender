@@ -1,13 +1,15 @@
 #include <fstream>
 #include <sstream>
 #include <map>
-#include <algorithm>
-#include "json.hpp" //only works if you have the library installed
+#include <chrono>
+#include <nlohmann/json.hpp> //only works if you have the libray installed
 #include "HashTable.cpp" // contains the HashTable class and GameStruct class
 
 using json = nlohmann::json;
 using namespace std;
 
+// Might take out later::
+/*
 double calculateGenreSimilarity(const vector<string>& userGenres, const vector<string>& gameGenres) {
     double score = 0.0;
     for (const auto& genre : userGenres) {
@@ -17,7 +19,6 @@ double calculateGenreSimilarity(const vector<string>& userGenres, const vector<s
     }
     return score;
 }
-
 vector<GameStruct> recommendGames(const string& userFavorite, const map<string, GameStruct>& games) {
     vector<pair<double, GameStruct>> scoredGames;
 
@@ -36,18 +37,18 @@ vector<GameStruct> recommendGames(const string& userFavorite, const map<string, 
             }
 
             // Genre similarity
-            score += calculateGenreSimilarity(favorite.genres, game.genres) * 10.0; // Weighted more heavily
+            score += calculateGenreSimilarity(favorite.genre, game.genre) * 10.0; // Weighted more heavily
 
             // User rating impact (average ratings)
-            if (!game.userRatings.empty()) {
-                double avgRating = accumulate(game.userRatings.begin(), game.userRatings.end(), 0.0) / game.userRatings.size();
-                score += avgRating;  // Add average user rating to the score
-            }
+            //if (!game.userRatings.empty()) {
+              //  double avgRating = accumulate(game.userRatings.begin(), game.userRatings.end(), 0.0) / game.userRatings.size();
+               // score += avgRating;  // Add average user rating to the score
+            //}
 
             // Check if it has user reviews
-            if (game.hasOthers) {
-                score += 2.0;  // Bonus points for having additional user data
-            }
+            //if (game.hasOthers) {
+                //score += 2.0;  // Bonus points for having additional user data
+            //}
 
             scoredGames.emplace_back(score, game);
         }
@@ -55,7 +56,7 @@ vector<GameStruct> recommendGames(const string& userFavorite, const map<string, 
         // Sorting in descending order of score
         sort(scoredGames.begin(), scoredGames.end(), [](const pair<double, GameStruct>& a, const pair<double, GameStruct>& b) {
             return a.first > b.first;
-        });
+            });
 
 
         vector<GameStruct> recommendations;
@@ -66,8 +67,9 @@ vector<GameStruct> recommendGames(const string& userFavorite, const map<string, 
     }
 
     return {};  // Return empty if favorite not found
-}
-
+}*/
+// ^^Might take out later
+// Helper Functions
 void displayReviews(const string& gameTitle, const map<string, GameStruct>& games) {
     string displayMore = "y";
     GameStruct currentGame = games.at(gameTitle);
@@ -75,64 +77,74 @@ void displayReviews(const string& gameTitle, const map<string, GameStruct>& game
     int currentReview = 0;
 
     while (displayMore != "n") {
-        cout << "\nUser Reviews:\n";
+        std::cout << "\nUser Reviews:\n";
         for (int i = 1; i <= 3; ++i) {
-            cout << "Review " << i << ". " << currentGame.reviews[currentReview] << endl;
+            //std::cout << "Review " << i << ". " << currentGame.reviews[currentReview] << endl; this won't work
             ++currentReview;
         }
-        cout << "Display 3 more reviews? (y/n) ";
+        std::cout << "Display 3 more reviews? (y/n) ";
         getline(cin, displayMore);
     }
-    cout << "\n";
+    std::cout << "\n";
 }
 
 int main() {
-    cout << "Loading main menu...\n" << endl;
+    std::cout << "Loading main menu...\n" << endl;
+    // Create map to store IGN reviews
+    map<string, GameStruct> IGNMap;
+    // Create a map to store Other Steam Reviews
+    map<string, ReviewStruct> SteamMap;
 
-    map<string, GameStruct> games;
-    HashTable gamesHashTable;
+    // Create hashTable store IGN Reviews
+    HashTableIGN IGNHashTable;
+    // Create a hashTable to store Other Steam Reviews
+    HashTableSteam SteamHashTable;
 
     // Open the JSON file
-    ifstream jsonFile("game.json");
-    json jsonData;
-    if (!jsonFile.is_open()) {
-        cout << "Error opening IGN Reviews JSON file." << endl;
+    ifstream JSONfile("game.json");
+    if (!JSONfile.is_open()) {
+        std::cout << "Error opening IGN Reviews JSON file." << endl;
         return 1;
     }
 
     // Parse the JSON file data
-    jsonFile >> jsonData;
-
-    for (const auto& item : jsonData["data"]) {
-        GameStruct game;
-        game.title = item["game"];
-        game.platform = item["platform"];
-        game.ignRating = item["rating"];
-        game.genres = item["genre"].get<vector<string>>();
-        game.hasOthers = false;
-        games[game.title] = game;
-        gamesHashTable.insertReview(game.title, game);
-    }
+    json jsonData;
+    JSONfile >> jsonData;
 
     // Close the file
-    jsonFile.close();
+    JSONfile.close();
+
+    // Extract data from IGN JSON and store it in the map & hash table
+    for (const auto& entry : jsonData["data"]) {
+        GameStruct info;
+        info.title = entry["game"];
+        info.platform = entry["platform"];
+        info.rating = entry["rating"];
+        info.genre = entry["genre"].get<vector<string>>();
+        info.hasSteam = false; // For now, it doesn't have other reviews
+        //Add it to the map
+        IGNMap[info.title] = info;
+        //Add it to the hash table
+        IGNHashTable.insertReview(entry["game"], info);
+    }
 
     //Open tsv file
-    ifstream tsvFile("dataset.tsv");
-    if (!tsvFile.is_open()) {
-        cout << "Error opening Steam Reviews dataset TSV file." << endl;
+    ifstream TSVfile("dataset.tsv");
+    if (!TSVfile.is_open()) {
+        std::cout << "Error opening Steam Reviews dataset CSV file." << endl;
         return 1;
     }
 
+    //Parse TSV data and store
     // Extract data from Steam tsv file and store it in the map & hash table
     string line;
 
-    if (!getline(tsvFile, line)) {
-        cout << "Error: File is empty or cannot read the header." << endl;
+    if (!getline(TSVfile, line)) {
+        std::cout << "Error: File is empty or cannot read the header." << endl;
         return 1;
     }
 
-    while (getline(tsvFile, line)) {
+    while (getline(TSVfile, line)) {
         stringstream ss(line);
         string cell;
         vector<string> row;
@@ -147,22 +159,29 @@ int main() {
             double rating;
             try {
                 rating = stod(row[2]);
-            } catch (const invalid_argument& ia) {
+            }
+            catch (const invalid_argument& ia) {
                 cerr << "Invalid rating for game " << title << ": " << row[2] << endl;
                 continue; // Skip this row due to invalid data
             }
-            bool hasOthers = (row[3] == "1.0");
+            bool hasSteam = (row[3] == "1.0");
 
-            if (games.find(title) != games.end()) {
-                games[title].reviews.push_back(reviewText);
-                gamesHashTable[title].reviews.push_back(reviewText);
-                games[title].userRatings.push_back(rating);
-                gamesHashTable[title].userRatings.push_back(rating);
-                games[title].hasOthers = hasOthers;
-                gamesHashTable[title].hasOthers = hasOthers;
-            } else {
-                // Create a new game entry if not found in JSON
-                GameStruct newGame;
+            if (IGNMap.find(title) != IGNMap.end()) {
+                //Create a Review struct
+                ReviewStruct tempRev;
+                tempRev.gameTitle = title;
+                tempRev.recommends = rating;
+                tempRev.reviewText = reviewText;
+                tempRev.UserID = 0; // should be changed in the insertReview func
+                //update the steam reviews hash table
+                SteamHashTable.insertReview(tempRev);
+                //IGNHashTable.hasSteam(title); // update the bool might not be needed
+                // update the steam reviews map
+                SteamMap[title] = tempRev;
+            }
+            else {
+                // Game Doesn't Exist Create a new game entry if not found in JSON
+                /*GameStruct newGame;
                 newGame.title = title;
                 newGame.reviews.push_back(reviewText);
                 newGame.userRatings.push_back(rating);
@@ -171,79 +190,137 @@ int main() {
                 newGame.platform = "Unknown";
                 newGame.ignRating = -1;  // Indicate missing IGN rating
                 games[title] = newGame;
-                gamesHashTable[title] = newGame;
+                gamesHashTable[title] = newGame;*/
+                std::cout << title << " doesn't exist in JSON" << endl;
             }
         }
     }
-    tsvFile.close();
-
+    TSVfile.close(); // close file
+    
+    // Actual Menu
     int userSelection = 0;
-
     while (true) {
         // MAIN MENU
-        cout << "Main Menu (enter a selection 1-4)\n"
-                "1. Print all games (title, platform, rating, genre)\n"
-                "2. Find a specific game in the database\n"
-                "3. Get game recommendations based on a specific game\n"
-                "4. Exit" << endl;
+        std::cout << "Main Menu (enter a selection 1-4)\n"
+            "1. Print all games (title, platform, rating, genre)\n"
+            "2. Find a specific game in the database\n"
+            "3. Get game recommendations based on a specific game\n"
+            "4. Exit" << endl;
         cin >> userSelection;
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
         if (userSelection == 1) {
-            for (const auto& entry : games) {
-                cout << "Title: " << entry.second.title << "\nPlatform: " << entry.second.platform << "\nIGN Rating: "
-                     << entry.second.ignRating << "\nGenres: ";
-                for (size_t i = 0; i < entry.second.genres.size(); ++i) {
-                    cout << entry.second.genres[i];
-                    if (i != entry.second.genres.size() - 1) cout << ", "; // Add comma only if it's not the last item
+            std::cout << "Do you want to just compare the times? (y/n)" << endl;
+            string choice;
+            cin >> choice;
+            if (choice == "y") {
+                std::cout << "Map Time: ";
+                auto start = std::chrono::high_resolution_clock::now();
+                //Iterate through IGNMap
+                int count = 0;
+                for (const auto& game : IGNMap) {
+                    //DO nothing
+                    count++;
                 }
-                cout << "\n\n"; // Finish with a newline for separation
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> time = end - start;
+                std::cout << "Iterating through " << count << " games in the map took " << time.count() << " milliseconds.";
+                std::cout << "Hash Table Time: ";
+                //Iterate through IGNHashTable
+                start = std::chrono::high_resolution_clock::now();
+                count = IGNHashTable.Iterate();
+                end = std::chrono::high_resolution_clock::now();
+                time = end - start;
+                std::cout << "Iterating through " << count << " games in the hash table took " << time.count() << " milliseconds.";
+
             }
+            else {
+                std::cout << "OK, get ready to be spammed" << endl;
+                // Actually print all the reviews;
+                //map
+                int count = 0;
+                auto start = std::chrono::high_resolution_clock::now();
+                for (const auto& game : IGNMap) {
+                    count++;
+                    cout << "Title: " << game.second.title << "\n";
+                    cout << "Platform: " << game.second.platform << "\n";
+                    cout << "Rating: " << game.second.rating << "\n";
+                    cout << "Genre(s): ";
+                    for (const auto& genre : game.second.genre) {
+                        cout << genre << ", ";
+                    }
+                    cout << endl;
+                    cout << endl;
+                }
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double, std::milli> time = end - start;
+                std::cout << "Iterating through " << count << " games in the map took " << time.count() << " milliseconds.";
+                //hashtable (only print them once, so dont print these
+                start = std::chrono::high_resolution_clock::now();
+                count = IGNHashTable.Iterate();
+                end = std::chrono::high_resolution_clock::now();
+                time = end - start;
+                std::cout << "Iterating through " << count << " games in the hash table took " << time.count() << " milliseconds.";
+            }
+            std::cout << "\033[2J\033[1;1H"; // clears screen
         }
 
         if (userSelection == 2) {
             string lookupTitle;
-            cout << "Enter the game title: ";
+            std::cout << "Enter the game title: ";
             getline(cin, lookupTitle);
-
-            if (games.find(lookupTitle) != games.end()) {
-                const GameStruct &game = games[lookupTitle];
-                cout << "Title: " << game.title << "\nPlatform: " << game.platform << "\nIGN Rating: " << game.ignRating
-                     << "\nGenres: ";
-                for (const string &genre: game.genres) {
-                    cout << genre << " ";
+            auto start = std::chrono::high_resolution_clock::now();
+            GameStruct found = IGNMap[lookupTitle];
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> time = end - start;
+            std::cout << "Look up through Map took " << time.count() << " milliseconds." << endl;
+            start = std::chrono::high_resolution_clock::now();
+            IGNHashTable.findReview(lookupTitle, false);
+            end = std::chrono::high_resolution_clock::now();
+            time = end - start;
+            std::cout << "Look up through Hash Table took " << time.count() << " milliseconds." << endl;
+            if (IGNMap.find(lookupTitle) != IGNMap.end()) {
+                const GameStruct& game = IGNMap[lookupTitle];
+                std::cout << "Title: " << game.title << "\nPlatform: " << game.platform << "\nIGN Rating: " << game.rating
+                    << "\nGenres: ";
+                for (const string& genre : game.genre) {
+                    std::cout << genre << " ";
                 }
                 string viewReviews;
-                cout << "Would you like to view user reviews for this game? (type in y/n): ";
+                std::cout << "Would you like to view user reviews for this game? (type in y/n): ";
                 getline(cin, viewReviews);
-                displayReviews(lookupTitle, games);
+                if (viewReviews == "y") {
+                    displayReviews(lookupTitle, IGNMap); // This is not going to work
+                }
             }
             else {
-                cout << "Game not found." << endl;
+                std::cout << "Game not found." << endl;
             }
+            std::cout << "\033[2J\033[1;1H"; // clears screen
         }
 
         if (userSelection == 3) {
             // Prompt user to input favorite game title
             string userFavorite;
-            cout << "Enter your favorite game: ";
+            std::cout << "Enter your favorite game: ";
             getline(cin, userFavorite);
-
+            IGNHashTable.recommendGames(userFavorite, SteamHashTable);
+            /*
             // Recommend games based ons similarity score
             vector<GameStruct> recommendations = recommendGames(userFavorite, games);
-            cout << "Based on your interest in " << userFavorite << ", we recommend:\n";
+            std::cout << "Based on your interest in " << userFavorite << ", we recommend:\n";
             int recNumber = 1;
-            for (const auto &rec: recommendations) {
-                cout << recNumber << ". " << rec.title << " on " << rec.platform << " rated " << rec.ignRating;
-                cout << ", Genres: ";
-                for (const auto &genre: rec.genres) {
-                    cout << genre << " ";
+            for (const auto& rec : recommendations) {
+                std::cout << recNumber << ". " << rec.title << " on " << rec.platform << " rated " << rec.ignRating;
+                std::cout << ", Genres: ";
+                for (const auto& genre : rec.genres) {
+                    std::cout << genre << " ";
                 }
-                cout << "\n";
+                std::cout << "\n";
                 ++recNumber;
             }
             string viewReviews = "n";
-            cout << "Would you like to view user reviews for one of these games? (type the index 1-5, or \"n\" to exit): ";
+            std::cout << "Would you like to view user reviews for one of these games? (type the index 1-5, or \"n\" to exit): ";
             getline(cin, viewReviews);
             if (viewReviews == "n") {
                 continue;
@@ -253,20 +330,23 @@ int main() {
                     int lookUpReviewIndex = stoi(viewReviews) - 1;
                     if (lookUpReviewIndex >= 0 && lookUpReviewIndex < recommendations.size()) {
                         displayReviews(recommendations[lookUpReviewIndex].title, games);
-                    } else {
-                        cout << "Invalid game index.\n";
                     }
-                } catch (const invalid_argument& ia) {
-                    cout << "Invalid input. Please enter a number or 'n' to skip.\n";
-                } catch (const out_of_range& oor) {
-                    cout << "Input out of range. Please try again.\n";
+                    else {
+                        std::cout << "Invalid game index.\n";
+                    }
                 }
-            }
-
+                catch (const invalid_argument& ia) {
+                    std::cout << "Invalid input. Please enter a number or 'n' to skip.\n";
+                }
+                catch (const out_of_range& oor) {
+                    std::cout << "Input out of range. Please try again.\n";
+                }
+            }*/
+            std::cout << "\033[2J\033[1;1H"; // clears screen
         }
 
         if (userSelection == 4) break;
     }
-    cout << "\nThank you for using the Game Recommender!" << endl;
+    std::cout << "\nThank you for using the Game Recommender!" << endl;
     return 0;
 }
